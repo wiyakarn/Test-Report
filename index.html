@@ -496,7 +496,11 @@ function rebuildProds(){
   document.getElementById('pCnt').textContent=D.products.length;
   const cont=document.getElementById('prodP');cont.innerHTML='';
   D.products.forEach((p,i)=>{
-    const bc=p.result==='fail'?'bfail':p.result==='pass'?'bpass':'bpend',bt=p.result==='fail'?'NOT PASS':p.result==='pass'?'PASS':'PENDING';
+    // Badge links to Overall result
+  const _ov=D.info&&D.info.overall?D.info.overall:'pending';
+  const _ovMap={'fail':{bc:'bfail',bt:'NOT PASS'},'approved_condition':{bc:'',bt:'COND.',bs:'background:#fdf4ff;color:#7e22ce'},'have_potential':{bc:'',bt:'POTENTIAL',bs:'background:#eff6ff;color:#1e40af'},'pass':{bc:'bpass',bt:'PASS'},'pending':{bc:'bpend',bt:'PENDING'}};
+  const _e=_ovMap[_ov]||{bc:'bpend',bt:'PENDING'};
+  const bc=_e.bc,bt=_e.bt,bs=_e.bs||'';
     const div=document.createElement('div');div.className='prod-card';
     const db=isEditor?`<button onclick="event.stopPropagation();delP(${i})" style="color:var(--red);font-size:14px;padding:4px 7px;background:none;border:none;cursor:pointer;border-radius:6px">✕</button>`:'';
     let body=isEditor?`
@@ -617,7 +621,7 @@ function render(){
     const bc=p.result==='fail'?'bfail':p.result==='pass'?'bpass':'bpend',bt=p.result==='fail'?'NOT PASS':p.result==='pass'?'PASS':'PENDING';
     let ph='';if(p.photos&&p.photos.length){ph='<div class="rpp">';p.photos.forEach(s=>{ph+=`<img src="${s}" alt="">`;});ph+='</div>';}
     const c=document.createElement('div');c.className='rpc';
-    c.innerHTML=`<div class="rph"><div class="rphn">${p.name||'ผลิตภัณฑ์ '+(idx+1)}</div><span class="badge ${bc}">${bt}</span></div><div class="rpb"><div><div class="il">Code</div><div class="iv">${p.code||'—'}</div></div><div><div class="il">Lot No.</div><div class="iv">${p.lot||'—'}</div></div><div><div class="il">Prod/MFG</div><div class="iv">${fmtDate(p.mfg)}</div></div><div><div class="il">BBE/EXP</div><div class="iv">${fmtDate(p.bbe)}</div></div><div><div class="il">Sample</div><div class="iv">${p.sample||'—'}</div></div><div><div class="il">Can supply</div><div class="iv">${p.supply||'—'}</div></div></div>${p.notes?`<div class="rpn"><strong style="font-size:9px;color:var(--hint);text-transform:uppercase">Notes</strong><br>${p.notes}</div>`:''}${ph}`;
+    c.innerHTML=`<div class="rph"><div class="rphn">${p.name||'ผลิตภัณฑ์ '+(idx+1)}</div><span class="badge ${bc}" style="${bs}">${bt}</span></div><div class="rpb"><div><div class="il">Code</div><div class="iv">${p.code||'—'}</div></div><div><div class="il">Lot No.</div><div class="iv">${p.lot||'—'}</div></div><div><div class="il">Prod/MFG</div><div class="iv">${fmtDate(p.mfg)}</div></div><div><div class="il">BBE/EXP</div><div class="iv">${fmtDate(p.bbe)}</div></div><div><div class="il">Sample</div><div class="iv">${p.sample||'—'}</div></div><div><div class="il">Can supply</div><div class="iv">${p.supply||'—'}</div></div></div>${p.notes?`<div class="rpn"><strong style="font-size:9px;color:var(--hint);text-transform:uppercase">Notes</strong><br>${p.notes}</div>`:''}${ph}`;
     pg.appendChild(c);
   });
   const ch=document.getElementById('ctH');while(ch.children.length>1)ch.removeChild(ch.lastChild);
@@ -668,16 +672,17 @@ init();
             </div>
           </div>
           <div style="display:flex;gap:8px;flex-direction:column">
+            <button onclick="openMailto()" style="width:100%;padding:13px;background:#0078d4;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.02em" id="btnMailto">📨 เปิด Outlook พร้อมข้อมูล</button>
             <div style="display:flex;gap:8px">
-              <button onclick="shareEmail('img')" style="flex:1;padding:11px;background:#0369a1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnShareImg">📤 แชร์รูปภาพ</button>
-              <button onclick="shareEmail('pdf')" style="flex:1;padding:11px;background:#1a1a2e;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnSharePdf">📤 แชร์ PDF</button>
+              <button onclick="shareEmail('img')" style="flex:1;padding:10px;background:#f8f9fb;color:#1c1e24;border:1.5px solid #e2e4e9;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer" id="btnShareImg">⬇ ดาวน์โหลดรูป</button>
+              <button onclick="shareEmail('pdf')" style="flex:1;padding:10px;background:#f8f9fb;color:#1c1e24;border:1.5px solid #e2e4e9;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer" id="btnSharePdf">⬇ ดาวน์โหลด PDF</button>
             </div>
-            <div id="shareNote2" style="font-size:10px;color:#9ca3af;text-align:center">เปิด share sheet → เลือก Outlook / Gmail / LINE / อื่นๆ ได้เลย</div>
+            <div style="font-size:10px;color:#9ca3af;text-align:center">กด "เปิด Outlook" → แนบไฟล์ที่ดาวน์โหลด → กดส่ง</div>
           </div>
         </div>
       </div>
       <div id="emailNote" style="font-size:11px;color:#6b7280;background:#f8f9fb;padding:8px 10px;border-radius:6px;line-height:1.5">
-        📱 <strong>มือถือ/iPad</strong>: เปิด share sheet → เลือก Outlook/Gmail/LINE ได้เลย ไม่ต้องดาวน์โหลด<br>💻 <strong>คอม</strong>: ถ้าเบราว์เซอร์รองรับจะเปิด share sheet / ถ้าไม่รองรับจะดาวน์โหลดไฟล์ให้
+        📨 กด <strong>เปิด Outlook</strong> → Outlook เปิดพร้อมข้อมูลครบ → แนบไฟล์ → กดส่ง<br>📱 <strong>มือถือ</strong>: Outlook app เปิดอัตโนมัติเลย
       </div>
     </div>
   </div>
@@ -703,6 +708,16 @@ function setEmailApp(app){
   document.getElementById('appOutlook').style.cssText='flex:1;padding:8px;font-size:12px;font-weight:700;border-radius:7px;cursor:pointer;border:2px solid '+(app==='outlook'?'#0078d4;background:#0078d4;color:#fff':'#e2e4e9;background:#fff;color:#1c1e24');
 }
 
+
+function openMailto(){
+  const to=document.getElementById('emailTo').value||'';
+  const cc=document.getElementById('emailCc').value||'';
+  const sub=document.getElementById('emailSubject').value||'';
+  const body=document.getElementById('emailBody').value||'';
+  const mailto=`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(sub)}&body=${encodeURIComponent(body)}`;
+  window.location.href=mailto;
+  document.getElementById('emailNote').innerHTML='<strong style="color:#0078d4">📨 Outlook เปิดแล้ว!</strong> กด "ดาวน์โหลด PDF/รูป" แล้วแนบไฟล์ใน Outlook ได้เลย';
+}
 async function shareEmail(type){
   const btn=document.getElementById(type==='pdf'?'btnSharePdf':'btnShareImg');
   const orig=btn.innerHTML; btn.disabled=true; btn.innerHTML='⏳ กำลังเตรียม...';
