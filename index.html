@@ -667,14 +667,17 @@ init();
               <button onclick="setEmailApp('outlook')" id="appOutlook" style="flex:1;padding:8px;font-size:12px;font-weight:700;border-radius:7px;cursor:pointer;border:2px solid #e2e4e9;background:#fff;color:#1c1e24">📨 Outlook</button>
             </div>
           </div>
-          <div style="display:flex;gap:8px">
-            <button onclick="sendEmailWithAttach('pdf')" style="flex:1;padding:10px;background:#1a1a2e;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnSendPdf">⬇ แนบ PDF</button>
-            <button onclick="sendEmailWithAttach('img')" style="flex:1;padding:10px;background:#0369a1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnSendImg">🖼 แนบรูปภาพ</button>
+          <div style="display:flex;gap:8px;flex-direction:column">
+            <div style="display:flex;gap:8px">
+              <button onclick="shareEmail('img')" style="flex:1;padding:11px;background:#0369a1;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnShareImg">📤 แชร์รูปภาพ</button>
+              <button onclick="shareEmail('pdf')" style="flex:1;padding:11px;background:#1a1a2e;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer" id="btnSharePdf">📤 แชร์ PDF</button>
+            </div>
+            <div id="shareNote2" style="font-size:10px;color:#9ca3af;text-align:center">เปิด share sheet → เลือก Outlook / Gmail / LINE / อื่นๆ ได้เลย</div>
           </div>
         </div>
       </div>
       <div id="emailNote" style="font-size:11px;color:#6b7280;background:#f8f9fb;padding:8px 10px;border-radius:6px;line-height:1.5">
-        ระบบจะ <strong>ดาวน์โหลดไฟล์</strong> + <strong>เปิดแอป email</strong> ให้อัตโนมัติ<br>จากนั้นแนบไฟล์ที่ดาวน์โหลดแล้วกดส่งได้เลย (มือถือ: ไฟล์จะบันทึกอัตโนมัติ)
+        📱 <strong>มือถือ/iPad</strong>: เปิด share sheet → เลือก Outlook/Gmail/LINE ได้เลย ไม่ต้องดาวน์โหลด<br>💻 <strong>คอม</strong>: ถ้าเบราว์เซอร์รองรับจะเปิด share sheet / ถ้าไม่รองรับจะดาวน์โหลดไฟล์ให้
       </div>
     </div>
   </div>
@@ -698,6 +701,92 @@ function setEmailApp(app){
   emailApp=app;
   document.getElementById('appGmail').style.cssText='flex:1;padding:8px;font-size:12px;font-weight:700;border-radius:7px;cursor:pointer;border:2px solid '+(app==='gmail'?'#1a1a2e;background:#1a1a2e;color:#fff':'#e2e4e9;background:#fff;color:#1c1e24');
   document.getElementById('appOutlook').style.cssText='flex:1;padding:8px;font-size:12px;font-weight:700;border-radius:7px;cursor:pointer;border:2px solid '+(app==='outlook'?'#0078d4;background:#0078d4;color:#fff':'#e2e4e9;background:#fff;color:#1c1e24');
+}
+
+async function shareEmail(type){
+  const btn=document.getElementById(type==='pdf'?'btnSharePdf':'btnShareImg');
+  const orig=btn.innerHTML; btn.disabled=true; btn.innerHTML='⏳ กำลังเตรียม...';
+  try{
+    const canvas=await html2canvas(document.getElementById('reportArea'),{scale:2,useCORS:true,backgroundColor:'#fff',logging:false,allowTaint:true});
+    const sup=D.info.supplier||'Report';
+    const brand=D.info.brand||'';
+    const subj=document.getElementById('emailSubject').value||`Test Report — ${brand?brand+' | ':''}${sup}`;
+    const bodyTxt=document.getElementById('emailBody').value||'';
+
+    if(type==='img'){
+      // Convert canvas to blob for Web Share
+      canvas.toBlob(async(blob)=>{
+        const file=new File([blob],`TestReport_${sup}.png`,{type:'image/png'});
+        if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+          try{
+            await navigator.share({
+              title: subj,
+              text: bodyTxt,
+              files:[file]
+            });
+            document.getElementById('emailNote').innerHTML='<strong style="color:#16a34a">✓ แชร์สำเร็จ!</strong>';
+          }catch(e){
+            if(e.name!=='AbortError') fallbackShare(canvas,sup,subj,bodyTxt,type);
+          }
+        } else if(navigator.share){
+          // Share without file (text only)
+          try{
+            await navigator.share({title:subj,text:bodyTxt+'
+
+(แนบรูปภาพด้วยตนเอง)'});
+          }catch(e){ fallbackShare(canvas,sup,subj,bodyTxt,type); }
+        } else {
+          fallbackShare(canvas,sup,subj,bodyTxt,type);
+        }
+        btn.disabled=false; btn.innerHTML=orig;
+      },'image/png',0.92);
+      return;
+    } else {
+      // PDF — share as file
+      const{jsPDF}=window.jspdf;
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const ih=(canvas.height*210)/canvas.width;
+      let y=0;while(y<ih){if(y>0)pdf.addPage();pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,-y,210,ih);y+=297;}
+      const pdfBlob=pdf.output('blob');
+      const file=new File([pdfBlob],`TestReport_${sup}.pdf`,{type:'application/pdf'});
+      if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        try{
+          await navigator.share({title:subj, text:bodyTxt, files:[file]});
+          document.getElementById('emailNote').innerHTML='<strong style="color:#16a34a">✓ แชร์สำเร็จ!</strong>';
+        }catch(e){
+          if(e.name!=='AbortError') fallbackShare(canvas,sup,subj,bodyTxt,type);
+        }
+      } else {
+        fallbackShare(canvas,sup,subj,bodyTxt,type);
+      }
+    }
+  }catch(e){alert('Error: '+e.message);}
+  btn.disabled=false; btn.innerHTML=orig;
+}
+
+function fallbackShare(canvas,sup,subj,bodyTxt,type){
+  // Fallback: download + open email
+  if(type==='pdf'){
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const ih=(canvas.height*210)/canvas.width;
+    let y=0;while(y<ih){if(y>0)pdf.addPage();pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,-y,210,ih);y+=297;}
+    pdf.save(`TestReport_${sup}.pdf`);
+  } else {
+    const a=document.createElement('a');a.download=`TestReport_${sup}.png`;a.href=canvas.toDataURL('image/png');a.click();
+  }
+  const to=encodeURIComponent(document.getElementById('emailTo').value||'');
+  const cc=encodeURIComponent(document.getElementById('emailCc').value||'');
+  const sub2=encodeURIComponent(subj);
+  const body2=encodeURIComponent(bodyTxt);
+  let url='';
+  if(emailApp==='outlook'){
+    url=`https://outlook.live.com/mail/deeplink/compose?to=${to}&cc=${cc}&subject=${sub2}&body=${body2}`;
+  } else {
+    url=`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&cc=${cc}&su=${sub2}&body=${body2}`;
+  }
+  setTimeout(()=>window.open(url,'_blank'),600);
+  document.getElementById('emailNote').innerHTML='<strong style="color:#16a34a">✓ ดาวน์โหลดแล้ว!</strong> เปิด email app แล้ว — แนบไฟล์แล้วกดส่งได้เลย';
 }
 
 async function sendEmailWithAttach(type){
