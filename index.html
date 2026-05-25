@@ -211,7 +211,7 @@ input[type=file]{display:none}
         <div class="rb">
           <div class="sl">ข้อมูลทั่วไป</div>
           <div class="ig"><div><div class="il">Supplier</div><div class="iv" id="rSup">—</div></div><div><div class="il">Brand</div><div class="iv" id="rBrand">—</div></div><div><div class="il">Tested by</div><div class="iv" id="rTester">—</div></div><div><div class="il">Dept.</div><div class="iv" id="rDept">—</div></div></div>
-          <div id="rObjWrap" style="display:none;margin-bottom:8px;padding:7px 10px;background:#f8f9fb;border-radius:6px;font-size:11px"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:700">Objective</span><div id="rObj" style="margin-top:2px;color:#1c1e24;line-height:1.5"></div></div>
+          <div id="rObjWrap" style="display:none;margin-bottom:8px;padding:7px 10px;background:#f8f9fb;border-radius:6px;font-size:11px"><span style="font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af;font-weight:700">Testing Status</span><div id="rObj" style="margin-top:2px;color:#1c1e24;line-height:1.5"></div></div>
           <div id="rBanner" style="display:none"></div>
           <div class="sl">ผลทดสอบ</div>
           <div class="pg" id="rPg"></div>
@@ -242,7 +242,7 @@ const configured = true;
 
 
 let isEditor=false, saveTimer=null, D={
-  info:{supplier:'',brand:'',tester:'',dept:'',docNo:'',date:'',round:'',overall:'pending',objective:''},
+  info:{supplier:'',brand:'',tester:'',dept:'',docNo:'',date:'',round:'',overall:'pending',testingStatus:''},
   products:[],criteria:[
     {label:'กลิ่น / Aroma',notes:{},results:{}},
     {label:'รสชาติ / Taste',notes:{},results:{}},
@@ -384,7 +384,14 @@ function rebuildInfoP(){
     <div class="g2">${mkF('Tested by',i.tester,"D.info.tester=this.value;render();autosave()")}${mkF('Dept.',i.dept,"D.info.dept=this.value;render();autosave()")}</div>
     <div class="g2">${mkF('Doc No.',i.docNo,"D.info.docNo=this.value;render();autosave()")}${mkF('Round',i.round,"D.info.round=this.value;render();autosave()")}</div>
     ${mkF('Test date',i.date,"D.info.date=this.value;render();autosave()",'date')}
-    ${mkF('Objective',i.objective,"D.info.objective=this.value;render();autosave()")}
+    ${mkS('Testing Status',i.testingStatus,[
+      {v:'',t:'— เลือก —'},
+      {v:'Sample Lot Approved',t:'Sample Lot Approved'},
+      {v:'Matching Cost Saving',t:'Matching Cost Saving'},
+      {v:'Contigency',t:'Contigency'},
+      {v:'Short Supply',t:'Short Supply'},
+      {v:'Alternative Supply',t:'Alternative Supply'}
+    ],"D.info.testingStatus=this.value;render();autosave()")}
     ${mkS('Overall result',i.overall,[{v:'pending',t:'— เลือกผล —'},{v:'fail',t:'Not Pass'},{v:'approved_condition',t:'Approved with Condition'},{v:'have_potential',t:'Have Potential'},{v:'testing',t:'Testing Status'},{v:'sample_lot_approved',t:'Sample Lot Approved'},{v:'pass',t:'Pass'}],"D.info.overall=this.value;render();autosave()")}`;
 }
 
@@ -491,7 +498,7 @@ function render(){
   if(bLogo){rBrandEl.innerHTML=`<span style="display:flex;align-items:center;gap:6px"><img src="${bLogo}" style="height:18px;object-fit:contain;border-radius:2px"><span>${i.brand}</span></span>`;}
   else{rBrandEl.textContent=i.brand||'—';}
   const objWrap=document.getElementById('rObjWrap'),objEl=document.getElementById('rObj');
-  if(objWrap&&objEl){if(i.objective){objWrap.style.display='block';objEl.textContent=i.objective;}else{objWrap.style.display='none';}}document.getElementById('rTester').textContent=i.tester||'—';document.getElementById('rDept').textContent=i.dept||'—';
+  if(objWrap&&objEl){if(i.testingStatus){objWrap.style.display='block';objEl.textContent=i.testingStatus;}else{objWrap.style.display='none';}}document.getElementById('rTester').textContent=i.tester||'—';document.getElementById('rDept').textContent=i.dept||'—';
   document.getElementById('rDoc').textContent=i.docNo||'—';document.getElementById('rDate').textContent=fmtDate(i.date);document.getElementById('rRound').textContent=i.round||'—';
   document.getElementById('rFoot').textContent=`Doc No.: ${i.docNo||'—'} | Page 1 of 1`;
   const banner=document.getElementById('rBanner'),ov=i.overall;
