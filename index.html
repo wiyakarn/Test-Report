@@ -402,6 +402,47 @@ function mkTestingStatus(val,lot){
     ${val==='Lot Approved'?`<div style="margin-top:6px"><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Lot No.</div><div style="display:flex;gap:6px;flex-wrap:wrap">${lotBtns}</div></div>`:''}
   </div>`;
 }
+
+// ── PRODUCT NAME AUTOCOMPLETE ─────────────────
+function getProdHistory(){
+  try{
+    const saved=D._prodHistory||[];
+    // Collect unique names from current products too
+    const current=D.products.map(p=>p.name).filter(n=>n&&n.trim());
+    const all=[...new Set([...saved,...current])].filter(Boolean);
+    return all;
+  }catch(e){return[];}
+}
+function saveProdName(name){
+  if(!name||!name.trim())return;
+  if(!D._prodHistory)D._prodHistory=[];
+  if(!D._prodHistory.includes(name)){
+    D._prodHistory.unshift(name);
+    if(D._prodHistory.length>30)D._prodHistory.pop();
+  }
+}
+function showProdSuggest(i,val){
+  const box=document.getElementById('psug'+i);
+  if(!box)return;
+  if(!val||val.length<1){box.style.display='none';return;}
+  const hist=getProdHistory();
+  const q=val.toLowerCase();
+  const matches=hist.filter(n=>n.toLowerCase().includes(q)&&n!==val);
+  if(!matches.length){box.style.display='none';return;}
+  box.innerHTML=matches.map(m=>`<div onmousedown="selectProd(${i},'${m.replace(/'/g,"\\'")}',event)" style="padding:8px 12px;font-size:12px;cursor:pointer;border-bottom:0.5px solid #f3f4f6;color:#1c1e24" onmouseover="this.style.background='#f8f9fb'" onmouseout="this.style.background='#fff'">${m}</div>`).join('');
+  box.style.display='block';
+}
+function selectProd(i,name,e){
+  if(e)e.preventDefault();
+  D.products[i].name=name;
+  const inp=document.getElementById('pname'+i);
+  if(inp)inp.value=name;
+  hideProdSuggest(i);
+  updPH(i);render();autosave();
+}
+function hideProdSuggest(i){
+  setTimeout(()=>{const b=document.getElementById('psug'+i);if(b)b.style.display='none';},150);
+}
 function rebuildInfoP(){
   const i=D.info;
   document.getElementById('infoP').innerHTML=`
@@ -415,7 +456,7 @@ function rebuildInfoP(){
 }
 
 // ── PRODUCTS ──────────────────────────────────
-function addP(){if(!isEditor)return;D.products.push({name:'',lot:'',mfg:'',bbe:'',sample:'',supply:'',result:'pending',notes:'',photos:[]});rebuildProds();rebuildCrit();autosave();}
+function addP(){if(!isEditor)return;D.products.push({name:'',code:'',lot:'',mfg:'',bbe:'',sample:'',supply:'',result:'pending',notes:'',photos:[]});rebuildProds();rebuildCrit();autosave();}
 function delP(i){if(!isEditor||!confirm('ลบ?'))return;D.products.splice(i,1);D.criteria.forEach(c=>{const nr={},nn={};Object.keys(c.results||{}).forEach(k=>{const nk=+k;if(nk<i)nr[k]=c.results[k];else if(nk>i)nr[nk-1]=c.results[k];});Object.keys(c.notes||{}).forEach(k=>{const nk=+k;if(nk<i)nn[k]=c.notes[k];else if(nk>i)nn[nk-1]=c.notes[k];});c.results=nr;c.notes=nn;});rebuildProds();rebuildCrit();autosave();}
 function rebuildProds(){
   document.getElementById('pCnt').textContent=D.products.length;
@@ -425,14 +466,16 @@ function rebuildProds(){
     const div=document.createElement('div');div.className='prod-card';
     const db=isEditor?`<button onclick="event.stopPropagation();delP(${i})" style="color:var(--red);font-size:14px;padding:4px 7px;background:none;border:none;cursor:pointer;border-radius:6px">✕</button>`:'';
     let body=isEditor?`
-      <div class="f"><label>ชื่อผลิตภัณฑ์</label><input value="${(p.name||'').replace(/"/g,'&quot;')}" oninput="D.products[${i}].name=this.value;updPH(${i});render();autosave()" placeholder="ชื่อผลิตภัณฑ์"></div>
+      <div class="f"><label>Code สินค้า</label><input value="${(p.code||''). replace(/"/g,'&quot;')}" oninput="D.products[${i}].code=this.value;autosave();render()" placeholder="รหัสสินค้า"></div>
+      <div class="f" style="position:relative"><label>ชื่อผลิตภัณฑ์</label><input id="pname${i}" value="${(p.name||''). replace(/"/g,'&quot;')}" oninput="D.products[${i}].name=this.value;updPH(${i});render();autosave();showProdSuggest(${i},this.value)" onblur="hideProdSuggest(${i})" placeholder="ชื่อผลิตภัณฑ์" autocomplete="off"><div id="psug${i}" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #e2e4e9;border-top:none;border-radius:0 0 7px 7px;max-height:160px;overflow-y:auto;z-index:99;box-shadow:0 4px 12px rgba(0,0,0,.08)"></div></div>
       <div class="g2"><div class="f"><label>Lot No.</label><input value="${(p.lot||'').replace(/"/g,'&quot;')}" oninput="D.products[${i}].lot=this.value;autosave();render()"></div><div class="f"><label>Prod/MFG date</label><input type="date" value="${p.mfg||''}" oninput="D.products[${i}].mfg=this.value;autosave();render()"></div></div>
       <div class="f"><label>BBE/EXP date</label><input type="date" value="${p.bbe||''}" oninput="D.products[${i}].bbe=this.value;autosave();render()"></div>
       <div class="g2"><div class="f"><label>Sample received</label><select onchange="D.products[${i}].sample=this.value;autosave();render()"><option value=""${!p.sample?' selected':''}>—</option><option${p.sample==='YES'?' selected':''}>YES</option><option${p.sample==='NO'?' selected':''}>NO</option></select></div><div class="f"><label>Can supply</label><select onchange="D.products[${i}].supply=this.value;autosave();render()"><option value=""${!p.supply?' selected':''}>—</option><option${p.supply==='YES'?' selected':''}>YES</option><option${p.supply==='NO'?' selected':''}>NO</option></select></div></div>
-      <div class="f"><label>Result</label><select onchange="D.products[${i}].result=this.value;updPB(${i});autosave();render()"><option value="pending"${p.result==='pending'?' selected':''}>Pending</option><option value="fail"${p.result==='fail'?' selected':''}>Not Pass</option><option value="pass"${p.result==='pass'?' selected':''}>Pass</option></select></div>
+      
       <div class="f"><label>Notes</label><textarea oninput="D.products[${i}].notes=this.value;autosave();render()" placeholder="หมายเหตุ...">${p.notes||''}</textarea></div>
       <div class="f"><label>รูปภาพ</label><div class="photo-row" id="ppw${i}"></div><button class="btn btn-outline btn-sm" onclick="trigPP(${i})" style="margin-top:6px">📷 เพิ่มรูป</button></div>`
-    :`<div class="g2"><div class="f"><label>Lot No.</label><div class="ro">${p.lot||'—'}</div></div><div class="f"><label>Prod/MFG</label><div class="ro">${fmtDate(p.mfg)}</div></div></div>
+    :`<div class="f"><label>Code สินค้า</label><div class="ro">${p.code||'—'}</div></div>
+        <div class="g2"><div class="f"><label>Lot No.</label><div class="ro">${p.lot||'—'}</div></div><div class="f"><label>Prod/MFG</label><div class="ro">${fmtDate(p.mfg)}</div></div></div>
       <div class="f"><label>BBE/EXP</label><div class="ro">${fmtDate(p.bbe)}</div></div>
       <div class="g2"><div class="f"><label>Sample</label><div class="ro">${p.sample||'—'}</div></div><div class="f"><label>Can supply</label><div class="ro">${p.supply||'—'}</div></div></div>
       ${p.notes?`<div class="f"><label>Notes</label><div class="ro">${p.notes}</div></div>`:''}
@@ -443,7 +486,7 @@ function rebuildProds(){
   });render();
 }
 function togP(i){const b=document.getElementById('pcb'+i),c=document.getElementById('ch'+i);const o=b.classList.toggle('open');c.className='chev'+(o?' open':'');}
-function updPH(i){const e=document.getElementById('phn'+i);if(e)e.textContent=D.products[i].name||'ผลิตภัณฑ์ '+(i+1);}
+function updPH(i){const e=document.getElementById('phn'+i);if(e)e.textContent=D.products[i].name||'ผลิตภัณฑ์ '+(i+1);if(D.products[i].name)saveProdName(D.products[i].name);}
 function updPB(i){const e=document.getElementById('pbdg'+i);const r=D.products[i].result;if(e){e.className='badge '+(r==='fail'?'bfail':r==='pass'?'bpass':'bpend');e.textContent=r==='fail'?'NOT PASS':r==='pass'?'PASS':'PENDING';}}
 function trigPP(i){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>{D.products[i].photos.push(ev.target.result);renderPPW(i);autosave();render();};r.readAsDataURL(f);});};inp.click();}
 function renderPPW(i){const c=document.getElementById('ppw'+i);if(!c)return;c.innerHTML='';(D.products[i].photos||[]).forEach((s,j)=>{const w=document.createElement('div');w.className='tw';w.innerHTML=`<img src="${s}" class="thumb"><button class="tdel" onclick="D.products[${i}].photos.splice(${j},1);renderPPW(${i});autosave()">✕</button>`;c.appendChild(w);});}
@@ -540,7 +583,7 @@ function render(){
     const bc=p.result==='fail'?'bfail':p.result==='pass'?'bpass':'bpend',bt=p.result==='fail'?'NOT PASS':p.result==='pass'?'PASS':'PENDING';
     let ph='';if(p.photos&&p.photos.length){ph='<div class="rpp">';p.photos.forEach(s=>{ph+=`<img src="${s}" alt="">`;});ph+='</div>';}
     const c=document.createElement('div');c.className='rpc';
-    c.innerHTML=`<div class="rph"><div class="rphn">${p.name||'ผลิตภัณฑ์ '+(idx+1)}</div><span class="badge ${bc}">${bt}</span></div><div class="rpb"><div><div class="il">Lot No.</div><div class="iv">${p.lot||'—'}</div></div><div><div class="il">Prod/MFG</div><div class="iv">${fmtDate(p.mfg)}</div></div><div><div class="il">BBE/EXP</div><div class="iv">${fmtDate(p.bbe)}</div></div><div><div class="il">Sample</div><div class="iv">${p.sample||'—'}</div></div><div><div class="il">Can supply</div><div class="iv">${p.supply||'—'}</div></div></div>${p.notes?`<div class="rpn"><strong style="font-size:9px;color:var(--hint);text-transform:uppercase">Notes</strong><br>${p.notes}</div>`:''}${ph}`;
+    c.innerHTML=`<div class="rph"><div class="rphn">${p.name||'ผลิตภัณฑ์ '+(idx+1)}</div><span class="badge ${bc}">${bt}</span></div><div class="rpb"><div><div class="il">Code</div><div class="iv">${p.code||'—'}</div></div><div><div class="il">Lot No.</div><div class="iv">${p.lot||'—'}</div></div><div><div class="il">Prod/MFG</div><div class="iv">${fmtDate(p.mfg)}</div></div><div><div class="il">BBE/EXP</div><div class="iv">${fmtDate(p.bbe)}</div></div><div><div class="il">Sample</div><div class="iv">${p.sample||'—'}</div></div><div><div class="il">Can supply</div><div class="iv">${p.supply||'—'}</div></div></div>${p.notes?`<div class="rpn"><strong style="font-size:9px;color:var(--hint);text-transform:uppercase">Notes</strong><br>${p.notes}</div>`:''}${ph}`;
     pg.appendChild(c);
   });
   const ch=document.getElementById('ctH');while(ch.children.length>1)ch.removeChild(ch.lastChild);
