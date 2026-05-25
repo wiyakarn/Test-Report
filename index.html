@@ -206,10 +206,10 @@ input[type=file]{display:none}
   <div class="layout">
     <div class="sidebar">
       <div class="panel"><div class="panel-head">ข้อมูลทั่วไป</div><div class="pb" id="infoP"></div></div>
-      <div class="panel"><div class="panel-head">ผลิตภัณฑ์ (<span id="pCnt">0</span>) <button class="panel-head-btn" id="addPBtn" onclick="addP()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="prodP" style="gap:0;padding-bottom:4px"></div></div>
-      <div class="panel"><div class="panel-head">เกณฑ์ทดสอบ <button class="panel-head-btn" id="addCBtn" onclick="addC()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="critP" style="gap:0;padding-bottom:4px"></div></div>
-      
       <div class="panel"><div class="panel-head">ลายเซ็น <button class="panel-head-btn" id="addSBtn" onclick="addS()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="sigP" style="gap:0;padding-bottom:4px"></div></div>
+      <div class="panel"><div class="panel-head">ผลิตภัณฑ์ (<span id="pCnt">0</span>) <button class="panel-head-btn" id="addPBtn" onclick="addP()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="prodP" style="gap:0;padding-bottom:4px"></div></div>
+      
+      <div class="panel"><div class="panel-head">เกณฑ์ทดสอบ <button class="panel-head-btn" id="addCBtn" onclick="addC()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="critP" style="gap:0;padding-bottom:4px"></div></div>
     </div>
 
     <div>
@@ -266,6 +266,7 @@ let isEditor=false, saveTimer=null, D={
     {role:'ผู้ทดสอบ / Tester',name:'',date:''},
     {role:'ผู้ตรวจสอบ / Reviewer',name:'',date:''},
     {role:'ผู้อนุมัติ / Approver',name:'',date:''},
+    {role:'ผู้อนุมัติ (2) / Approver 2',name:'',date:''},
   ],
   logoSrc:'', pw:'',
 };
@@ -300,7 +301,7 @@ async function dbSave(){
   } else { saveLocal(); setSyncTxt('sync-ok','💾 บันทึกในเครื่อง'); setTimeout(()=>setSyncTxt('',''),2000);}
 }
 function saveLocal(){try{localStorage.setItem('tr_data_v2',JSON.stringify(D));}catch(e){}}
-function loadLocal(){try{const s=localStorage.getItem('tr_data_v2');if(s){const p=JSON.parse(s);D=Object.assign(D,p);if(!D.signatures)D.signatures=[{role:'ผู้ทดสอบ / Tester',name:'',date:''},{role:'ผู้ตรวจสอบ / Reviewer',name:'',date:''},{role:'ผู้อนุมัติ / Approver',name:'',date:''}];}}catch(e){}}
+function loadLocal(){try{const s=localStorage.getItem('tr_data_v2');if(s){const p=JSON.parse(s);D=Object.assign(D,p);if(!D.signatures)D.signatures=[{role:'ผู้ทดสอบ / Tester',name:'',date:''},{role:'ผู้ตรวจสอบ / Reviewer',name:'',date:''},{role:'ผู้อนุมัติ / Approver',name:'',date:''},{role:'ผู้อนุมัติ (2) / Approver 2',name:'',date:''}];}}catch(e){}}
 function autosave(){if(!isEditor)return;clearTimeout(saveTimer);saveTimer=setTimeout(dbSave,800);}
 
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
