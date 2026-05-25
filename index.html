@@ -206,10 +206,10 @@ input[type=file]{display:none}
   <div class="layout">
     <div class="sidebar">
       <div class="panel"><div class="panel-head">ข้อมูลทั่วไป</div><div class="pb" id="infoP"></div></div>
-      <div class="panel"><div class="panel-head">ลายเซ็น <button class="panel-head-btn" id="addSBtn" onclick="addS()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="sigP" style="gap:0;padding-bottom:4px"></div></div>
       <div class="panel"><div class="panel-head">ผลิตภัณฑ์ (<span id="pCnt">0</span>) <button class="panel-head-btn" id="addPBtn" onclick="addP()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="prodP" style="gap:0;padding-bottom:4px"></div></div>
-      
       <div class="panel"><div class="panel-head">เกณฑ์ทดสอบ <button class="panel-head-btn" id="addCBtn" onclick="addC()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="critP" style="gap:0;padding-bottom:4px"></div></div>
+      
+      <div class="panel"><div class="panel-head">ลายเซ็น <button class="panel-head-btn" id="addSBtn" onclick="addS()" style="display:none">+ เพิ่ม</button></div><div class="pb" id="sigP" style="gap:0;padding-bottom:4px"></div></div>
     </div>
 
     <div>
@@ -302,6 +302,25 @@ async function dbSave(){
 }
 function saveLocal(){try{localStorage.setItem('tr_data_v2',JSON.stringify(D));}catch(e){}}
 function loadLocal(){try{const s=localStorage.getItem('tr_data_v2');if(s){const p=JSON.parse(s);D=Object.assign(D,p);if(!D.signatures)D.signatures=[{role:'ผู้ทดสอบ / Tester',name:'',date:''},{role:'ผู้ตรวจสอบ / Reviewer',name:'',date:''},{role:'ผู้อนุมัติ / Approver',name:'',date:''},{role:'ผู้อนุมัติ (2) / Approver 2',name:'',date:''}];}}catch(e){}}
+
+async function saveDraft(){
+  const btn=document.getElementById('saveDraftBtn');
+  if(!btn)return;
+  const orig=btn.innerHTML; btn.disabled=true; btn.innerHTML='⏳ กำลังบันทึก...';
+  try{
+    // Save with timestamp as draft marker
+    const now=new Date();
+    const ts=now.toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    D._draftSaved=ts;
+    await dbSave();
+    btn.style.background='#166534';
+    btn.innerHTML='✓ บันทึกแล้ว '+ts;
+    setTimeout(()=>{btn.innerHTML=orig;btn.disabled=false;},3000);
+  }catch(e){
+    btn.innerHTML='✗ บันทึกไม่สำเร็จ';
+    setTimeout(()=>{btn.innerHTML=orig;btn.disabled=false;},2000);
+  }
+}
 function autosave(){if(!isEditor)return;clearTimeout(saveTimer);saveTimer=setTimeout(dbSave,800);}
 
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
@@ -398,7 +417,8 @@ const TS_OPTS=[
   {v:'Cost Saving',t:'Cost Saving'},
   {v:'Contigency',t:'Contigency'},
   {v:'Short Supply',t:'Short Supply'},
-  {v:'Alternative Supply',t:'Alternative Supply'}
+  {v:'Alternative Supply',t:'Alternative Supply'},
+  {v:'Shelf-life Extension',t:'Shelf-life Extension'}
 ];
 function mkTestingStatus(val,lot){
   if(!isEditor){
@@ -492,8 +512,8 @@ function rebuildProds(){
       <div class="f"><label>BBE/EXP</label><div class="ro">${fmtDate(p.bbe)}</div></div>
       <div class="g2"><div class="f"><label>Sample</label><div class="ro">${p.sample||'—'}</div></div><div class="f"><label>Can supply</label><div class="ro">${p.supply||'—'}</div></div></div>
       ${p.notes?`<div class="f"><label>Notes</label><div class="ro">${p.notes}</div></div>`:''}
-      ${p.photos&&p.photos.length?`<div class="f"><label>รูปภาพ</label><div class="photo-row">${p.photos.map((s,pi)=>`<img src="${s}" class="thumb" onclick="openLb(${JSON.stringify(p.photos)},${pi})" style="cursor:zoom-in">`).join('')}</div></div>`:''}`;
-    div.innerHTML=`<div class="prod-head" onclick="togP(${i})"><span class="chev open" id="ch${i}">▶</span><span class="pname" id="phn${i}">${p.name||'ผลิตภัณฑ์ '+(i+1)}</span><span class="badge ${bc}" id="pbdg${i}">${bt}</span>${db}</div><div class="coll open pcb" id="pcb${i}">${body}</div>`;
+      ${p.photos&&p.photos.length?`<div class="f"><label>รูปภาพ</label><div class="photo-row">${p.photos.map((s,pi)=>`<img src="${s}" class="thumb" onclick="openLb(${JSON.stringify(p.photos)},${pi},${i2},${pi})" style="cursor:zoom-in">`).join('')}</div></div>`:''}`;
+    div.innerHTML=`<div class="prod-head" onclick="togP(${i})"><span class="chev open" id="ch${i}">▶</span><span class="pname" id="phn${i}">${p.name||'ผลิตภัณฑ์ '+(i+1)}</span>${db}</div><div class="coll open pcb" id="pcb${i}">${body}</div>`;
     cont.appendChild(div);
     if(isEditor) renderPPW(i);
   });render();
@@ -502,7 +522,7 @@ function togP(i){const b=document.getElementById('pcb'+i),c=document.getElementB
 function updPH(i){const e=document.getElementById('phn'+i);if(e)e.textContent=D.products[i].name||'ผลิตภัณฑ์ '+(i+1);if(D.products[i].name)saveProdName(D.products[i].name);}
 function updPB(i){const e=document.getElementById('pbdg'+i);const r=D.products[i].result;if(e){e.className='badge '+(r==='fail'?'bfail':r==='pass'?'bpass':'bpend');e.textContent=r==='fail'?'NOT PASS':r==='pass'?'PASS':'PENDING';}}
 function trigPP(i){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=e=>{Array.from(e.target.files).forEach(f=>{const r=new FileReader();r.onload=ev=>{D.products[i].photos.push(ev.target.result);renderPPW(i);autosave();render();};r.readAsDataURL(f);});};inp.click();}
-function renderPPW(i){const c=document.getElementById('ppw'+i);if(!c)return;c.innerHTML='';(D.products[i].photos||[]).forEach((s,j)=>{const w=document.createElement('div');w.className='tw';w.innerHTML=`<img src="${s}" class="thumb" onclick="openLb(D.products[${i}].photos,${j})" style="cursor:zoom-in"><button class="tdel" onclick="D.products[${i}].photos.splice(${j},1);renderPPW(${i});autosave()">✕</button>`;c.appendChild(w);});}
+function renderPPW(i){const c=document.getElementById('ppw'+i);if(!c)return;c.innerHTML='';(D.products[i].photos||[]).forEach((s,j)=>{const w=document.createElement('div');w.className='tw';w.innerHTML=`<img src="${s}" class="thumb" onclick="openLb(D.products[${i}].photos,${j},${i},${j})" style="cursor:zoom-in"><button class="tdel" onclick="D.products[${i}].photos.splice(${j},1);renderPPW(${i});autosave()">✕</button>`;c.appendChild(w);});}
 
 // ── CRITERIA ──────────────────────────────────
 function addC(){if(!isEditor)return;D.criteria.push({label:'หัวข้อใหม่',results:{},notes:{}});rebuildCrit();autosave();}
@@ -716,20 +736,31 @@ async function sendEmailWithAttach(type){
 <div id="lbOverlay" onclick="lbClose(event)">
   <span id="lbClose" onclick="closeLb()">✕</span>
   <span id="lbPrev" onclick="lbNav(-1,event)">&#8249;</span>
-  <img id="lbImg" src="" alt="">
+  <img id="lbImg" src="" alt="" style="transition:transform .3s">
   <span id="lbNext" onclick="lbNav(1,event)">&#8250;</span>
   <div id="lbCaption"></div>
+  <div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:10000">
+    <button onclick="lbRotate(-90,event)" style="background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:16px;cursor:pointer" title="หมุนซ้าย">↺</button>
+    <button onclick="lbRotate(90,event)" style="background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:16px;cursor:pointer" title="หมุนขวา">↻</button>
+    <button onclick="lbSaveRotated(event)" id="lbSaveBtn" style="background:rgba(255,255,255,.18);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">💾 บันทึกรูป</button>
+  </div>
 </div>
 <script>
-let lbSrcs=[],lbIdx=0;
-function openLb(srcs,idx){
-  lbSrcs=srcs; lbIdx=idx||0;
-  document.getElementById('lbImg').src=lbSrcs[lbIdx];
+let lbSrcs=[],lbIdx=0,lbDeg=0,lbProdIdx=-1,lbPhotoIdx=-1;
+function openLb(srcs,idx,pi,phi){
+  lbSrcs=srcs; lbIdx=idx||0; lbDeg=0;
+  lbProdIdx=(pi!==undefined)?pi:-1;
+  lbPhotoIdx=(phi!==undefined)?phi:-1;
+  const img=document.getElementById('lbImg');
+  img.src=lbSrcs[lbIdx]; img.style.transform='rotate(0deg)';
   document.getElementById('lbCaption').textContent=(lbSrcs.length>1?(lbIdx+1)+' / '+lbSrcs.length:'');
   document.getElementById('lbOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
 function closeLb(){
+  lbDeg=0;
+  const img=document.getElementById('lbImg');
+  if(img)img.style.transform='rotate(0deg)';
   document.getElementById('lbOverlay').classList.remove('open');
   document.body.style.overflow='';
 }
@@ -737,8 +768,45 @@ function lbClose(e){if(e.target===document.getElementById('lbOverlay'))closeLb()
 function lbNav(dir,e){
   e.stopPropagation();
   lbIdx=(lbIdx+dir+lbSrcs.length)%lbSrcs.length;
-  document.getElementById('lbImg').src=lbSrcs[lbIdx];
+  lbDeg=0;
+  const img=document.getElementById('lbImg');
+  img.src=lbSrcs[lbIdx]; img.style.transform='rotate(0deg)';
   document.getElementById('lbCaption').textContent=(lbSrcs.length>1?(lbIdx+1)+' / '+lbSrcs.length:'');
+}
+function lbRotate(deg,e){
+  if(e)e.stopPropagation();
+  lbDeg=(lbDeg+deg+360)%360;
+  document.getElementById('lbImg').style.transform='rotate('+lbDeg+'deg)';
+}
+function lbSaveRotated(e){
+  if(e)e.stopPropagation();
+  if(lbDeg===0)return;
+  const img=document.getElementById('lbImg');
+  const canvas=document.createElement('canvas');
+  const tmpImg=new Image();
+  tmpImg.onload=function(){
+    const w=tmpImg.naturalWidth,h=tmpImg.naturalHeight;
+    const rotated=lbDeg===90||lbDeg===270;
+    canvas.width=rotated?h:w; canvas.height=rotated?w:h;
+    const ctx=canvas.getContext('2d');
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.rotate(lbDeg*Math.PI/180);
+    ctx.drawImage(tmpImg,-w/2,-h/2);
+    const newSrc=canvas.toDataURL('image/jpeg',0.92);
+    // Update source in data
+    if(lbProdIdx>=0&&lbPhotoIdx>=0&&D.products[lbProdIdx]){
+      D.products[lbProdIdx].photos[lbPhotoIdx]=newSrc;
+      lbSrcs[lbIdx]=newSrc;
+      img.src=newSrc;
+      lbDeg=0; img.style.transform='rotate(0deg)';
+      autosave();
+      // refresh sidebar thumbnails
+      if(isEditor)renderPPW(lbProdIdx);
+      const btn=document.getElementById('lbSaveBtn');
+      if(btn){const o=btn.innerHTML;btn.innerHTML='✓ บันทึกแล้ว';setTimeout(()=>btn.innerHTML=o,1500);}
+    }
+  };
+  tmpImg.src=lbSrcs[lbIdx];
 }
 document.addEventListener('keydown',e=>{
   const ov=document.getElementById('lbOverlay');
@@ -746,6 +814,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeLb();
   if(e.key==='ArrowLeft')lbNav(-1,{stopPropagation:()=>{}});
   if(e.key==='ArrowRight')lbNav(1,{stopPropagation:()=>{}});
+  if(e.key==='r'||e.key==='R')lbRotate(90,{stopPropagation:()=>{}});
 });
 </script>
 </body>
