@@ -242,7 +242,7 @@ const configured = true;
 
 
 let isEditor=false, saveTimer=null, D={
-  info:{supplier:'',brand:'',tester:'',dept:'',docNo:'',date:'',round:'',overall:'pending',testingStatus:''},
+  info:{supplier:'',brand:'',tester:'',dept:'',docNo:'',date:'',round:'',overall:'pending',testingStatus:'',sampleLot:''},
   products:[],criteria:[
     {label:'กลิ่น / Aroma',notes:{},results:{}},
     {label:'รสชาติ / Taste',notes:{},results:{}},
@@ -376,6 +376,32 @@ function onBrandSel(v){
     render();autosave();
   }
 }
+
+const TS_OPTS=[
+  {v:'',t:'— เลือก —'},
+  {v:'Sample',t:'Sample'},
+  {v:'Lot Approved',t:'Lot Approved'},
+  {v:'Matching',t:'Matching'},
+  {v:'Cost Saving',t:'Cost Saving'},
+  {v:'Contigency',t:'Contigency'},
+  {v:'Short Supply',t:'Short Supply'},
+  {v:'Alternative Supply',t:'Alternative Supply'}
+];
+function mkTestingStatus(val,lot){
+  if(!isEditor){
+    const lbl=TS_OPTS.find(o=>o.v===val)?.t||'—';
+    const lotTxt=val==='Lot Approved'&&lot?' (Lot '+lot+')':'';
+    return`<div class="f"><label>Testing Status</label><div class="ro">${lbl}${lotTxt}</div></div>`;
+  }
+  const opts=TS_OPTS.map(o=>`<option value="${o.v}"${val===o.v?' selected':''}>${o.t}</option>`).join('');
+  const lotBtns=[1,2,3,4,5,6].map(n=>`<button type="button" onclick="D.info.sampleLot='${n}';render();autosave()" style="padding:5px 10px;font-size:12px;font-family:inherit;border-radius:6px;cursor:pointer;font-weight:${lot==n?'700':'400'};background:${lot==n?'#1a1a2e':'#f8f9fb'};color:${lot==n?'#fff':'#1c1e24'};border:1.5px solid ${lot==n?'#1a1a2e':'#e2e4e9'}">${n}</button>`).join('');
+  return`<div class="f"><label>Testing Status</label>
+    <select onchange="D.info.testingStatus=this.value;D.info.sampleLot='';rebuildInfoP();render();autosave()">
+      ${opts}
+    </select>
+    ${val==='Lot Approved'?`<div style="margin-top:6px"><div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Lot No.</div><div style="display:flex;gap:6px;flex-wrap:wrap">${lotBtns}</div></div>`:''}
+  </div>`;
+}
 function rebuildInfoP(){
   const i=D.info;
   document.getElementById('infoP').innerHTML=`
@@ -384,15 +410,8 @@ function rebuildInfoP(){
     <div class="g2">${mkF('Tested by',i.tester,"D.info.tester=this.value;render();autosave()")}${mkF('Dept.',i.dept,"D.info.dept=this.value;render();autosave()")}</div>
     <div class="g2">${mkF('Doc No.',i.docNo,"D.info.docNo=this.value;render();autosave()")}${mkF('Round',i.round,"D.info.round=this.value;render();autosave()")}</div>
     ${mkF('Test date',i.date,"D.info.date=this.value;render();autosave()",'date')}
-    ${mkS('Testing Status',i.testingStatus,[
-      {v:'',t:'— เลือก —'},
-      {v:'Sample Lot Approved',t:'Sample Lot Approved'},
-      {v:'Matching Cost Saving',t:'Matching Cost Saving'},
-      {v:'Contigency',t:'Contigency'},
-      {v:'Short Supply',t:'Short Supply'},
-      {v:'Alternative Supply',t:'Alternative Supply'}
-    ],"D.info.testingStatus=this.value;render();autosave()")}
-    ${mkS('Overall result',i.overall,[{v:'pending',t:'— เลือกผล —'},{v:'fail',t:'Not Pass'},{v:'approved_condition',t:'Approved with Condition'},{v:'have_potential',t:'Have Potential'},{v:'testing',t:'Testing Status'},{v:'sample_lot_approved',t:'Sample Lot Approved'},{v:'pass',t:'Pass'}],"D.info.overall=this.value;render();autosave()")}`;
+    ${mkTestingStatus(i.testingStatus,i.sampleLot)}
+    ${mkS('Overall result',i.overall,[{v:'pending',t:'— เลือกผล —'},{v:'fail',t:'Not Pass'},{v:'approved_condition',t:'Approved with Condition'},{v:'have_potential',t:'Have Potential'},{v:'pass',t:'Pass'}],"D.info.overall=this.value;render();autosave()")}`;
 }
 
 // ── PRODUCTS ──────────────────────────────────
@@ -498,7 +517,13 @@ function render(){
   if(bLogo){rBrandEl.innerHTML=`<span style="display:flex;align-items:center;gap:6px"><img src="${bLogo}" style="height:18px;object-fit:contain;border-radius:2px"><span>${i.brand}</span></span>`;}
   else{rBrandEl.textContent=i.brand||'—';}
   const objWrap=document.getElementById('rObjWrap'),objEl=document.getElementById('rObj');
-  if(objWrap&&objEl){if(i.testingStatus){objWrap.style.display='block';objEl.textContent=i.testingStatus;}else{objWrap.style.display='none';}}document.getElementById('rTester').textContent=i.tester||'—';document.getElementById('rDept').textContent=i.dept||'—';
+  if(objWrap&&objEl){
+    if(i.testingStatus){
+      objWrap.style.display='block';
+      const lotTxt=i.testingStatus==='Lot Approved'&&i.sampleLot?' (Lot '+i.sampleLot+')':'';
+      objEl.textContent=i.testingStatus+lotTxt;
+    }else{objWrap.style.display='none';}
+  }document.getElementById('rTester').textContent=i.tester||'—';document.getElementById('rDept').textContent=i.dept||'—';
   document.getElementById('rDoc').textContent=i.docNo||'—';document.getElementById('rDate').textContent=fmtDate(i.date);document.getElementById('rRound').textContent=i.round||'—';
   document.getElementById('rFoot').textContent=`Doc No.: ${i.docNo||'—'} | Page 1 of 1`;
   const banner=document.getElementById('rBanner'),ov=i.overall;
@@ -506,8 +531,6 @@ function render(){
     'fail':   {cls:'rbanner rbf',   html:`<div><div class="rbtf">✗ ไม่ผ่านการทดสอบ (Not Pass)</div><div class="rbsub">กรุณาแก้ไขสูตรและส่ง re-test ใหม่</div></div><span class="badge bfail">NOT PASS</span>`},
     'approved_condition': {cls:'rbanner rbc', html:`<div><div class="rbtc">⚠ Approved with Condition</div><div class="rbsub">ผ่านแบบมีเงื่อนไข — ต้องแก้ไขก่อนใช้งานจริง</div></div><span class="badge" style="background:#fdf4ff;color:#7e22ce">COND.</span>`},
     'have_potential': {cls:'rbanner rbo', html:`<div><div class="rbtp2">◎ Have Potential</div><div class="rbsub">มีศักยภาพ — รอการพัฒนาเพิ่มเติม</div></div><span class="badge" style="background:#eff6ff;color:#1e40af">POTENTIAL</span>`},
-    'testing': {cls:'rbanner rbts-bg', html:`<div><div class="rbts">⏳ Testing Status</div><div class="rbsub">อยู่ระหว่างการทดสอบ</div></div><span class="badge" style="background:#ecfeff;color:#0e7490">TESTING</span>`},
-    'sample_lot_approved': {cls:'rbanner rbtsla-bg', html:`<div><div class="rbtsla">✓ Sample Lot Approved</div><div class="rbsub">อนุมัติ Sample Lot แล้ว</div></div><span class="badge" style="background:#f0fdf4;color:#166534">LOT APPROVED</span>`},
     'pass': {cls:'rbanner rbp', html:`<div><div class="rbtp">✓ ผ่านการทดสอบ (Pass)</div></div><span class="badge bpass">PASS</span>`},
   };
   if(bannerMap[ov]){banner.style.display='flex';banner.className=bannerMap[ov].cls;banner.innerHTML=bannerMap[ov].html;}
@@ -577,7 +600,7 @@ function openEmailModal(){
   const sup=i.supplier||'Supplier';
   const brand=i.brand||'';
   const ov=i.overall;
-  const ovLabel={fail:'Not Pass',approved_condition:'Approved with Condition',have_potential:'Have Potential',testing:'Testing Status',sample_lot_approved:'Sample Lot Approved',pass:'Pass',pending:'Pending'}[ov]||'Pending';
+  const ovLabel={fail:'Not Pass',approved_condition:'Approved with Condition',have_potential:'Have Potential',pass:'Pass',pending:'Pending'}[ov]||'Pending';
   document.getElementById('emailSubject').value=`Test Report — ${brand?brand+' | ':''}${sup} | ${ovLabel} | ${i.docNo||''}`;
   document.getElementById('emailBody').value=`เรียน ทีมงาน\n\nขอส่งผลการทดสอบวัตถุดิบ ${i.round||''}\nSupplier: ${sup}\nBrand: ${brand||'—'}\nผลการทดสอบ: ${ovLabel}\n\nรายละเอียดตามเอกสารแนบ\n\nขอบคุณครับ/ค่ะ`;
   document.getElementById('emailModal').style.display='flex';
