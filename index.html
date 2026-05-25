@@ -471,7 +471,19 @@ function handleLogo(e){if(!isEditor)return;const f=e.target.files[0];if(!f)retur
 
 // ── RENDER ────────────────────────────────────
 function render(){
-  if(D.logoSrc){document.getElementById('rlogoTxt').style.display='none';const img=document.getElementById('rlogoImg');img.src=D.logoSrc;img.style.display='block';}
+  // Show logo: custom upload takes priority, then brand logo, else show LOGO text
+  const rlogoTxt=document.getElementById('rlogoTxt');
+  const rlogoImg=document.getElementById('rlogoImg');
+  const activeLogo=D.logoSrc||(D.info&&D.info.brand?BRAND_LOGOS[D.info.brand]:null);
+  if(activeLogo){
+    rlogoTxt.style.display='none';
+    rlogoImg.src=activeLogo;
+    rlogoImg.style.display='block';
+  } else {
+    rlogoTxt.style.display='';
+    rlogoImg.src='';
+    rlogoImg.style.display='none';
+  }
   const i=D.info;
   document.getElementById('rSup').textContent=i.supplier||'—';
   const rBrandEl=document.getElementById('rBrand');
