@@ -405,15 +405,10 @@ function autosave(){if(!isEditor)return;clearTimeout(saveTimer);saveTimer=setTim
 function fmtDate(d){if(!d)return'—';try{return new Date(d+'T00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch(e){return d;}}
 
 // ── AUTH ──────────────────────────────────────
-async function init(){
-  // Load settings (pw, history) from dedicated settings record
-  await loadSettings();
-  // Fallback: if still no pw after load, set default
-  if(!D.pw) D.pw='wiyakarn';
-  // Start with blank report every time
+function init(){
+  D.pw='wiyakarn';
   D.info.reportDate=new Date().toISOString().slice(0,10);
   setTimeout(()=>{rebuildAll();render();},100);
-  if(!D.pw){document.getElementById('setupBox').style.display='block';document.getElementById('authSub').textContent='ยังไม่มี password — ตั้งก่อนใช้งาน';}
 }
 
 async function loadSettings(){
@@ -469,10 +464,16 @@ function doSetup(){
 }
 function doLogin(){
   const pw=document.getElementById('pwInput').value;
-  if(!D.pw){alert('กรุณาตั้ง password ก่อน');return;}
-  if(pw!==D.pw){document.getElementById('authErr').style.display='block';document.getElementById('pwInput').value='';return;}
-  document.getElementById('authErr').style.display='none';
-  enterApp(true);
+  if(!pw){return;}
+  const correct='wiyakarn';
+  if(pw===correct){
+    D.pw=correct;
+    document.getElementById('authErr').style.display='none';
+    enterApp(true);
+  } else {
+    document.getElementById('authErr').style.display='block';
+    document.getElementById('pwInput').value='';
+  }
 }
 function doView(){enterApp(false);}
 function enterApp(edit){
@@ -480,6 +481,8 @@ function enterApp(edit){
   document.getElementById('authScreen').style.display='none';
   document.getElementById('app').style.display='block';
   setMode(edit);
+  // Open draft modal after login
+  setTimeout(()=>{if(configured) openDraftModal();},300);
 }
 function toggleMode(){
   if(isEditor){setMode(false);}
@@ -1191,7 +1194,12 @@ function newReport(){
 // Open draft modal on page load
 document.addEventListener('DOMContentLoaded',function(){
   setTimeout(()=>{
-    if(configured) openDraftModal();
+    // Only open draft modal if user is already in app (not on auth screen)
+    const authScreen=document.getElementById('authScreen');
+    const appDiv=document.getElementById('app');
+    if(configured && appDiv && appDiv.style.display!=='none' && authScreen && authScreen.style.display==='none'){
+      openDraftModal();
+    }
   },600);
 });
 </script>
